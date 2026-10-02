@@ -49,4 +49,10 @@ export const TEMPLATE_PACKS: MosaicTemplatePackDescriptor[] = [
     description:
       "Clips addressed to one person: who they are, why them, what you are offering, where to click.",
   },
+  {
+    id: "social",
+    title: "Social",
+    description:
+      "The deterministic layer of a short-form post: the words over a visual that was generated somewhere else.",
+  },
 ];

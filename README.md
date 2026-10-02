@@ -1,8 +1,19 @@
 # m0saic-outreach
 
-**Personalized outreach video as a template.** Your agent already writes the
-cold message. Have it fill a props file instead, and the message is a video
-with the recipient's name and face on the first frame.
+**Marketing video as templates an agent fills in.** Each template here was
+written by an agent for one specific job. The job's inputs are a props file,
+the output is the same pixels every time, and nobody opens an editor.
+
+| Template | What it makes |
+|---|---|
+| [`@outreach/invite/why-you/v1`](#why-you-a-personalized-clip-per-recipient) | A 15-second clip addressed to one person: their name and face, why them, your pitch, their link. |
+| [`@outreach/social/hook-wall/v1`](#hook-wall-one-visual-many-hooks) | The text layer of a short-form post: one visual, up to four hooks, as the post itself or side by side to compare. |
+
+## Why You: a personalized clip per recipient
+
+Your agent already writes the cold message. Have it fill a props file
+instead, and the message is a video with the recipient's name and face on
+the first frame.
 
 ![Example clip: a made-up brand writing to @qsbuilds](examples/northwind-to-qsbuilds/clip.gif)
 
@@ -10,15 +21,14 @@ with the recipient's name and face on the first frame.
 It was rendered from [this 22-line JSON file](examples/northwind-to-qsbuilds/props.json)
 and one profile picture. Nobody opened an editor.*
 
-## The idea
+### The idea
 
 An outreach agent does three things per recipient: looks at their profile,
 decides why they are worth writing to, writes the message. The output is
 text, and text from an agent reads like text from an agent.
 
-This repo is one [m0saic](https://m0saic.io) template,
-`@outreach/invite/why-you/v1`. It takes what the agent already has and
-renders a 15-second clip in four beats:
+`@outreach/invite/why-you/v1` is a [m0saic](https://m0saic.io) template. It
+takes what the agent already has and renders a 15-second clip in four beats:
 
 1. **Hello** - their picture, "Hey Quentin," and their handle. It is on
    screen from frame 0, so the thumbnail in a DM is their own name and face.
@@ -31,7 +41,7 @@ The agent does no video work. It writes JSON; m0saic lays out, fits and
 animates. The same props render the same pixels, so a list of a thousand
 recipients is a loop, and a clip you approved once stays approved.
 
-## Render one: three pastes
+### Render one: three pastes
 
 You need Node 18.17+. `dist/` is committed, so a clone renders with no
 `npm install` in the repo and no build.
@@ -81,7 +91,7 @@ It exists because a picture prop needs an absolute path at render time and a
 props file that travels wants a relative one; the wrapper resolves
 `recipientImage` against the JSON file.
 
-## The props
+### The props
 
 Everything is optional except the two names. An empty string removes that
 line and the layout closes up.
@@ -108,7 +118,7 @@ two lines, and only at the smallest size does anything get an ellipsis.
 Text is Latin script. Emoji and other scripts in scraped profile copy are
 dropped rather than drawn as empty boxes.
 
-## Render a list
+### Render a list
 
 Put what every clip shares in `shared` and one object per person in
 `recipients`:
@@ -142,7 +152,7 @@ node tools/outreach.mjs recipients.json --out-dir out
 One MP4 per recipient lands in `out/`, named after the handle, rendered one
 at a time. `--dry` prints the plan without rendering.
 
-## Wiring it into an agent
+### Wiring it into an agent
 
 The step your agent adds is small. For each recipient it already researches,
 ask it for the JSON object above instead of (or as well as) the message
@@ -159,15 +169,63 @@ The reasons are the whole clip. A reason that could be sent to anyone
 not less. A reason that names what the person actually does is what makes
 them wonder how the video was made.
 
+## Hook Wall: one visual, many hooks
+
+![Four hooks over one stand-in visual, side by side](examples/hook-wall/wall.png)
+
+A generated visual is the expensive half of a short-form post, and you
+cannot generate the same one twice. The hook over it is the cheap half, and
+it is the half that gets tested. `@outreach/social/hook-wall/v1` keeps them
+apart: the visual is a file, the hooks are strings, and each hook is one
+more render with the same visual, the same type and the same position.
+
+- **One hook** renders the post itself at 1080x1920. A still visual gives a
+  PNG (a slideshow slide), a video visual gives an MP4.
+- **Two to four hooks** render the same post side by side under a title, so
+  the variants can be compared in one frame.
+- **Two styles**: `outline` (white type, dark edge) and `box` (dark type on
+  a white label). Every hook in a render shares one size.
+- **Safe area**: hooks stay clear of the platform's right-hand rail, top bar
+  and caption block. A long hook shrinks and wraps; it never runs under the
+  interface or off the frame.
+
+With no visual it draws a flat stand-in scene, so it renders from a bare
+clone:
+
+```
+m0saic make @outreach/social/hook-wall/v1 --template-repo . -o wall.png
+m0saic make @outreach/social/hook-wall/v1 --template-repo . --props @examples/hook-wall/props.json -o wall.png
+```
+
+With your own visual and hooks (the path must be absolute):
+
+```
+m0saic make @outreach/social/hook-wall/v1 --template-repo . -o post.mp4 --props '{"visual":["/abs/path/take.mp4"],"hooks":["POV: you finally stopped doing this by hand"]}'
+```
+
+| Prop | What it is |
+|---|---|
+| `visual` | Zero or one image or video under the hook. |
+| `hooks` | One to four hooks. |
+| `hookStyle` | `"outline"` or `"box"`. |
+| `hookPosition` | `"top"` or `"middle"`. |
+| `title`, `note` | The lines above and below the tiles when comparing. |
+| `accent`, `background`, `ink` | Colours of the comparison frame, `#rrggbb`. |
+| `durationSec` | Clip length, 2 to 60, when the visual is a video. |
+
+Hooks are Latin text. Emoji are dropped, not drawn as empty boxes; an emoji
+layer is the obvious next version.
+
 ## In Mosaic Desktop
 
-Templates → **Add source** → paste this repo's URL → consent. The template
+Templates → **Add source** → paste this repo's URL → consent. Each template
 opens in Make with every line bound to its prop: double-click a line to
-edit it in place, drop a picture on the disc.
+edit it in place, drop a picture or a clip on its slot.
 
-## About the example
+## About the examples
 
-`examples/northwind-to-qsbuilds` is addressed to this repo's author,
+No real company is named anywhere in this repo. `examples/hook-wall` uses
+the built-in stand-in visual. `examples/northwind-to-qsbuilds` is addressed to this repo's author,
 [@qsbuilds](https://x.com/qsbuilds), so the recipient is real and the
 picture is his own. The sender, Northwind, is made up, and so is everything
 in the template's defaults.
@@ -180,9 +238,9 @@ npm run verify     # build + lint + jest + loader contract + dependency policy
 m0saic doctor .    # the same conventions, from the CLI
 ```
 
-The template is `src/invite/why-you/v1/why-you.ts`; its header comment is
-the design. Its test sweeps the layout contract at seven canvases with
-defaults, long copy, one reason, a picture and nothing optional.
+Each template is one file (`src/<pack>/<slug>/v1/<slug>.ts`) and its header
+comment is the design. Each test sweeps the layout contract at seven
+canvases with defaults, long copy and every mode.
 `dist/` and `template-manifest.json` are committed, so run `npm run build`
 before every commit. A shipped template never changes: a fix is a `v2`
 folder. Agents: read [`AGENTS.md`](AGENTS.md) first.

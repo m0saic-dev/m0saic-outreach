@@ -1,6 +1,7 @@
 import type { StarterChapter, StarterRegistryEntry } from "./registry-types";
 import { basicsRegistry } from "./basics/registry";
 import { inviteRegistry } from "./invite/registry";
+import { socialRegistry } from "./social/registry";
 
 /**
  * Every template, chapter by chapter. Array order is display order — the
@@ -10,6 +11,7 @@ import { inviteRegistry } from "./invite/registry";
 export const CHAPTERS: StarterChapter[] = [
   { pack: "basics", entries: basicsRegistry },
   { pack: "invite", entries: inviteRegistry },
+  { pack: "social", entries: socialRegistry },
 ];
 
 /** Flat view over every chapter, in order. */

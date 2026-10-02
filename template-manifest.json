@@ -53,6 +53,26 @@
         "video": "assets/templates/@outreach__invite__why-you__v1/preview.mp4",
         "poster": "assets/templates/@outreach__invite__why-you__v1/poster.png"
       }
+    },
+    {
+      "slug": "hook-wall",
+      "templateKey": "@outreach/social/hook-wall/v1",
+      "title": "03 · Hook Wall",
+      "description": "One visual, up to four hooks: the text layer of a short-form post, fitted and drawn the same way every render. One hook renders the post itself; several render them side by side to compare.",
+      "tags": [
+        "social",
+        "hooks",
+        "short-form",
+        "ugc",
+        "captions",
+        "variants",
+        "a-b-test",
+        "vertical"
+      ],
+      "pack": "social",
+      "preview": {
+        "image": "assets/templates/@outreach__social__hook-wall__v1/preview.png"
+      }
     }
   ],
   "packs": [
@@ -65,6 +85,11 @@
       "id": "invite",
       "title": "Invite",
       "description": "Clips addressed to one person: who they are, why them, what you are offering, where to click."
+    },
+    {
+      "id": "social",
+      "title": "Social",
+      "description": "The deterministic layer of a short-form post: the words over a visual that was generated somewhere else."
     }
   ]
 }

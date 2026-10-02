@@ -5,10 +5,11 @@ Entry point for coding agents working in this repo. Humans want
 
 ## What this repo is
 
-Personalized outreach video as templates: an agent fills one props file per
-recipient and m0saic renders the clip. One real template today,
-`@outreach/invite/why-you/v1` (`src/invite/why-you/v1/`), plus the
-hello-world front door. The namespace is `@outreach` (`src/repo.ts`); it
+One-off marketing templates, each written for a specific job and kept
+generic: an agent fills a props file and m0saic renders. Today:
+`@outreach/invite/why-you/v1` (a personalized clip per recipient) and
+`@outreach/social/hook-wall/v1` (the hook layer of a short-form post),
+plus the hello-world front door. The namespace is `@outreach` (`src/repo.ts`); it
 does not carry the m0saic name on purpose - hosts flag an unsigned repo
 that calls itself m0saic.
 
@@ -73,7 +74,15 @@ and `deprecated: { replacement }` on the old one.
   carry their own `window`.
 - The canvas is `document.backgroundColor`, never a full-frame rect.
 - A file prop needs an absolute path at render; `tools/outreach.mjs`
-  resolves a relative one against the props file.
+  resolves a relative one against the props file (why-you only).
+- Shared text fitting lives in `src/_shared/text.ts` (hook-wall uses it;
+  why-you/v1 shipped with its own copy and is not edited).
+- hook-wall: an outlined hook is the glyph path from `textToPath` as two
+  masked colour tiles (stroked dark, filled white) on one rect - the svg
+  rasterizer has no stroke. Output kind and canvas come from
+  `resolveOutputHints(props)`; the static hints are its answer at defaults.
+- A template built as a private demo for someone renders their version
+  into the gitignored `out/private/`; nothing of theirs is committed.
 
 ## Rules that fail silently
 
