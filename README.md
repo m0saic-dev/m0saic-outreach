@@ -197,10 +197,11 @@ same timing.
   slideshow slide.
 
 With no visual it draws a flat stand-in scene, so it renders from a bare
-clone:
+clone. `npm run demo` is the first line below under a shorter name, and
+passes anything after `--` through (`npm run demo -- --props ...`):
 
 ```
-m0saic make @outreach/social/live-hooks/v1 --template-repo . -o wall.mp4
+m0saic make @outreach/social/live-hooks/v1 --template-repo . -o demo.mp4
 m0saic make @outreach/social/live-hooks/v1 --template-repo . --props @examples/live-hooks/props.json -o wall.mp4
 ```
 

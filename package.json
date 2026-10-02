@@ -19,7 +19,8 @@
     "check:deps": "node tools/check-deps.mjs",
     "lint": "eslint .",
     "verify": "npm run build && npm run lint && npm test && npm run test:contract && npm run check:deps",
-    "previews": "node tools/gen-previews.mjs"
+    "previews": "node tools/gen-previews.mjs",
+    "demo": "m0saic make @outreach/social/live-hooks/v1 --template-repo . -o demo.mp4"
   },
   "//dependencies": [
     "The @m0saic/* substrate is on npm. The 0.x ranges (types, platform,",
