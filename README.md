@@ -31,18 +31,44 @@ The agent does no video work. It writes JSON; m0saic lays out, fits and
 animates. The same props render the same pixels, so a list of a thousand
 recipients is a loop, and a clip you approved once stays approved.
 
-## Render one
+## Render one: three pastes
 
-You need Node 18.17+ and the m0saic CLI (`npm i -g m0saic`). `dist/` is
-committed, so a clone renders with no install and no build:
+You need Node 18.17+. `dist/` is committed, so a clone renders with no
+`npm install` in the repo and no build.
+
+**1. Install m0saic** (once per machine; `setup` fetches a pinned ffmpeg
+and asks before it downloads):
 
 ```
-git clone https://github.com/m0saic-dev/m0saic-outreach
-cd m0saic-outreach
+npm i -g m0saic && m0saic setup
+```
+
+**2. Get the template:**
+
+```
+git clone https://github.com/m0saic-dev/m0saic-outreach && cd m0saic-outreach
+```
+
+**3. Render it** at its defaults (a made-up brand writing to a made-up Alex):
+
+```
+m0saic make @outreach/invite/why-you/v1 --template-repo . -o demo.mp4
+```
+
+That takes about 20 seconds on a laptop. To make it yours, hand it props.
+Anything you leave out keeps its default:
+
+```
+m0saic make @outreach/invite/why-you/v1 --template-repo . -o clara.mp4 --props '{"recipientName":"Clara","recipientHandle":"@claragold","brandName":"Gigi","tagline":"The agentic network","accent":"#e8c98f","background":"#0a0612"}'
+```
+
+To reproduce the clip at the top of this page, picture included:
+
+```
 node tools/outreach.mjs examples/gigi-to-qsbuilds/props.json -o quentin.mp4
 ```
 
-That takes about 20 seconds on a laptop. Other canvases re-flow:
+Other canvases re-flow:
 
 ```
 node tools/outreach.mjs examples/gigi-to-qsbuilds/props.json -o wide.mp4 -w 1920 -h 1080
