@@ -4,10 +4,10 @@
 cold message. Have it fill a props file instead, and the message is a video
 with the recipient's name and face on the first frame.
 
-![Example clip: Gigi to @qsbuilds](examples/gigi-to-qsbuilds/clip.gif)
+![Example clip: a made-up brand writing to @qsbuilds](examples/northwind-to-qsbuilds/clip.gif)
 
-*The example above, with sound-free MP4: [`examples/gigi-to-qsbuilds/clip.mp4`](examples/gigi-to-qsbuilds/clip.mp4).
-It was rendered from [this 22-line JSON file](examples/gigi-to-qsbuilds/props.json)
+*The example above, with sound-free MP4: [`examples/northwind-to-qsbuilds/clip.mp4`](examples/northwind-to-qsbuilds/clip.mp4).
+It was rendered from [this 22-line JSON file](examples/northwind-to-qsbuilds/props.json)
 and one profile picture. Nobody opened an editor.*
 
 ## The idea
@@ -59,20 +59,20 @@ That takes about 20 seconds on a laptop. To make it yours, hand it props.
 Anything you leave out keeps its default:
 
 ```
-m0saic make @outreach/invite/why-you/v1 --template-repo . -o clara.mp4 --props '{"recipientName":"Clara","recipientHandle":"@claragold","brandName":"Gigi","tagline":"The agentic network","accent":"#e8c98f","background":"#0a0612"}'
+m0saic make @outreach/invite/why-you/v1 --template-repo . -o jordan.mp4 --props '{"recipientName":"Jordan","recipientHandle":"@jordanships","brandName":"Acme","tagline":"Ship it faster","accent":"#5eead4","background":"#0b1020"}'
 ```
 
 To reproduce the clip at the top of this page, picture included:
 
 ```
-node tools/outreach.mjs examples/gigi-to-qsbuilds/props.json -o quentin.mp4
+node tools/outreach.mjs examples/northwind-to-qsbuilds/props.json -o quentin.mp4
 ```
 
 Other canvases re-flow:
 
 ```
-node tools/outreach.mjs examples/gigi-to-qsbuilds/props.json -o wide.mp4 -w 1920 -h 1080
-node tools/outreach.mjs examples/gigi-to-qsbuilds/props.json -o reel.mp4 -w 1080 -h 1920
+node tools/outreach.mjs examples/northwind-to-qsbuilds/props.json -o wide.mp4 -w 1920 -h 1080
+node tools/outreach.mjs examples/northwind-to-qsbuilds/props.json -o reel.mp4 -w 1080 -h 1920
 ```
 
 `tools/outreach.mjs` is a thin wrapper over
@@ -94,13 +94,13 @@ line and the layout closes up.
 | `greeting` | The word before the name. | `"Hey"` |
 | `question` | The line that opens beat two. | `"Why you?"` |
 | `reasons` | One to three reasons, a line each (two lines at most when wrapped). | `["You ship in public."]` |
-| `brandName` | Who is writing. Required. | `"Gigi"` |
-| `tagline` | Under the brand name, in the accent. | `"The agentic network"` |
+| `brandName` | Who is writing. Required. | `"Northwind"` |
+| `tagline` | Under the brand name, in the accent. | `"Warm intros, on autopilot"` |
 | `pitch` | One or two sentences. Breaks at the sentences when it can. | |
 | `ctaLabel` | The line above the link. | `"Your personal invite"` |
-| `ctaUrl` | The link, in the pill. | `"gigi.co/invite"` |
-| `signoff` | Who signed it. | `"Clara Gold, founder of Gigi"` |
-| `accent`, `background`, `ink` | Your brand colours, `#rrggbb`. | `"#e8c98f"` |
+| `ctaUrl` | The link, in the pill. | `"northwind.example/invite/quentin"` |
+| `signoff` | Who signed it. | `"Sam, founder of Northwind"` |
+| `accent`, `background`, `ink` | Your brand colours, `#rrggbb`. | `"#5eead4"` |
 | `durationSec` | Clip length, 8 to 60. The beats keep their shares. | `15` |
 
 Copy is fitted, never clipped: a long name shrinks, a long reason wraps to
@@ -167,11 +167,10 @@ edit it in place, drop a picture on the disc.
 
 ## About the example
 
-`examples/gigi-to-qsbuilds` is an unsolicited demo: what a launch invite
-from [Gigi](https://gigi.co) to [@qsbuilds](https://x.com/qsbuilds) could
-look like as a personalized clip. Gigi's name, tagline and pitch line are
-Gigi's own public words. This repo is not affiliated with or endorsed by
-Gigi, and the template's own defaults name nobody real.
+`examples/northwind-to-qsbuilds` is addressed to this repo's author,
+[@qsbuilds](https://x.com/qsbuilds), so the recipient is real and the
+picture is his own. The sender, Northwind, is made up, and so is everything
+in the template's defaults.
 
 ## Develop
 

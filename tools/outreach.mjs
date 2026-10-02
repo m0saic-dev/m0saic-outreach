@@ -4,7 +4,7 @@
  *
  *   node tools/outreach.mjs <file.json> [-o out.mp4] [--out-dir dir] [-w 1080] [-h 1080] [--dry]
  *
- * The file is either ONE props object (see examples/gigi-to-qsbuilds/props.json),
+ * The file is either ONE props object (see examples/northwind-to-qsbuilds/props.json),
  * or a batch:
  *
  *   { "shared": { ...props every clip has... },

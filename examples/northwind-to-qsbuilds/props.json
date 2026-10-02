@@ -1,0 +1,22 @@
+{
+  "recipientName": "Quentin",
+  "recipientHandle": "@qsbuilds",
+  "recipientImage": "avatar.jpg",
+  "greeting": "Hey",
+  "question": "Why you?",
+  "reasons": [
+    "You are building m0saic: video an agent renders from props.",
+    "Your agents ship a template a day, in public.",
+    "Builders who work through agents are who Northwind is for."
+  ],
+  "brandName": "Northwind",
+  "tagline": "Warm intros, on autopilot",
+  "pitch": "Tell Northwind who you need to meet. It finds the shortest trusted path there and asks for the intro.",
+  "ctaLabel": "Your personal invite",
+  "ctaUrl": "northwind.example/invite/quentin",
+  "signoff": "Sam, founder of Northwind",
+  "accent": "#5eead4",
+  "background": "#0b1020",
+  "ink": "#ffffff",
+  "durationSec": 15
+}

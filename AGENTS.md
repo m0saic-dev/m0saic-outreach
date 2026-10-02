@@ -12,9 +12,10 @@ hello-world front door. The namespace is `@outreach` (`src/repo.ts`); it
 does not carry the m0saic name on purpose - hosts flag an unsigned repo
 that calls itself m0saic.
 
-This repo is **public**. Template defaults and previews name nobody real.
-A real brand or person appears only under `examples/`, labelled as a demo
-in the README.
+This repo is **public**. No real company and no third person is named
+anywhere in it: not in a default, a preview, an example, a comment or a
+commit message. The one real person is the repo's author, who is the
+recipient in `examples/`; every sender is made up.
 
 ## Before you write a template: the knowledge base and the examples
 
@@ -39,7 +40,7 @@ Then read code. Three public repos cover most of the product surface:
 ```
 npm run build        # tsc → copy assets → regenerate template-manifest.json → conventions gate
 npm run verify       # build + lint + jest + loader contract + dependency policy
-node tools/outreach.mjs examples/gigi-to-qsbuilds/props.json -o clip.mp4   # resolves the picture path, then m0saic make
+node tools/outreach.mjs examples/northwind-to-qsbuilds/props.json -o clip.mp4   # resolves the picture path, then m0saic make
 ```
 
 `dist/` and `template-manifest.json` are generated AND committed (hosts load

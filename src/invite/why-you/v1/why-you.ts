@@ -321,8 +321,8 @@ function balanceLines(text: string, px: number, maxW: number, face: WhyYouFace, 
 
 /**
  * The copy broken at its sentences: short sentences share a line while they
- * fit, a long one wraps (balanced) on its own lines. "Anyone you need.
- * Through people you trust. / Gigi is the agent ..." reads better than an
+ * fit, a long one wraps (balanced) on its own lines. "Tell us who you need
+ * to meet. / It finds the shortest path there ..." reads better than an
  * even split through the middle of a sentence. Null when the copy is one
  * sentence or a line would not fit.
  */
