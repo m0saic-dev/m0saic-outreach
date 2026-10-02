@@ -1,0 +1,54 @@
+{
+  "name": "m0saic-outreach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personalized outreach video as a m0saic template repo: one template, one props file per recipient.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist template-manifest.json",
+    "build": "tsc -p tsconfig.build.json && node tools/copy-assets.mjs && node dist/gen-template-manifest.js && node tools/check-registry.mjs",
+    "conventions:sweep": "node tools/check-registry.mjs --sweep",
+    "fingerprints:update": "node tools/check-registry.mjs --update-fingerprints",
+    "new": "node tools/new-template.mjs",
+    "manifest": "node dist/gen-template-manifest.js",
+    "test": "jest",
+    "test:contract": "node tools/contract-check.mjs",
+    "test:contract:deep": "node tools/contract-check.mjs --deep",
+    "check:deps": "node tools/check-deps.mjs",
+    "lint": "eslint .",
+    "verify": "npm run build && npm run lint && npm test && npm run test:contract && npm run check:deps",
+    "previews": "node tools/gen-previews.mjs"
+  },
+  "//dependencies": [
+    "The @m0saic/* substrate is on npm. The 0.x ranges (types, platform,",
+    "template-utils) track the m0saic CLI line; the language packages (dsl,",
+    "dsl-stdlib) version on their own. AUTHOR MODE (build / test / lint) is",
+    "`npm install && npm run verify` — no monorepo checkout, no file: links.",
+    "",
+    "USING the repo: `npm run build` first. dist/ is NOT committed here (the",
+    "full starter commits it for a zero-build clone; this scaffold keeps",
+    "generated files out of your diffs). Once built, the app (Templates ->",
+    "Add source) and the CLI (--template-repo) load dist/index.js, and the",
+    "host resolves @m0saic/* from its own module tree at load time."
+  ],
+  "dependencies": {
+    "@m0saic/dsl": "^2.0.0",
+    "@m0saic/dsl-stdlib": "^3.0.0",
+    "@m0saic/platform": "^0.3.0",
+    "@m0saic/template-utils": "^0.3.0",
+    "@m0saic/types": "^0.3.0"
+  },
+  "devDependencies": {
+    "@m0saic/knowledge": "^0.3.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.3.3",
+    "eslint": "^9.39.0",
+    "jest": "^30.2.0",
+    "rimraf": "^6.1.3",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
+  }
+}

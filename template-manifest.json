@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "repo": {
+    "repoId": "@outreach",
+    "displayName": "Outreach",
+    "schemaVersion": 1,
+    "description": "Personalized outreach video as a template: an agent that already writes the cold message fills a props file per recipient (name, picture, three reasons, the pitch, the link) and m0saic renders the clip. No editing, no per-video prompt work, the same pixels for the same props.",
+    "curator": "qsbuilds",
+    "homepage": "https://github.com/m0saic-dev/m0saic-outreach",
+    "assets": {
+      "templatesDir": "assets/templates"
+    },
+    "helloWorld": "@outreach/basics/hello-world/v1"
+  },
+  "entryModule": "./dist/index.js",
+  "templates": [
+    {
+      "slug": "hello-world",
+      "templateKey": "@outreach/basics/hello-world/v1",
+      "title": "01 · Hello World",
+      "description": "The canonical m0saic hello-world card with this repo's subline: the brand field wipes in, a navy card rises, the M assembles from its own rectangles, then the wordmark and your greeting. The repo's front door — what `m0saic hello-world --template-repo .` renders. Replace it with your first real template, or keep it and point repo.helloWorld at your own.",
+      "tags": [
+        "basics",
+        "starter",
+        "brand",
+        "hello"
+      ],
+      "pack": "basics",
+      "preview": {
+        "image": "assets/templates/@outreach__basics__hello-world__v1/preview.png",
+        "video": "assets/templates/@outreach__basics__hello-world__v1/preview.mp4",
+        "poster": "assets/templates/@outreach__basics__hello-world__v1/poster.png"
+      }
+    },
+    {
+      "slug": "why-you",
+      "templateKey": "@outreach/invite/why-you/v1",
+      "title": "02 · Why You",
+      "description": "A personalized cold-open clip: greets one person by name and face, answers why them in three lines, pitches the brand and ends on their invite link. One props file per recipient.",
+      "tags": [
+        "invite",
+        "outreach",
+        "personalized",
+        "cold-open",
+        "dm",
+        "marketing",
+        "agent",
+        "video"
+      ],
+      "pack": "invite",
+      "preview": {
+        "image": "assets/templates/@outreach__invite__why-you__v1/preview.png",
+        "video": "assets/templates/@outreach__invite__why-you__v1/preview.mp4",
+        "poster": "assets/templates/@outreach__invite__why-you__v1/poster.png"
+      }
+    }
+  ],
+  "packs": [
+    {
+      "id": "basics",
+      "title": "Basics",
+      "description": "The front door: the canonical hello-world card."
+    },
+    {
+      "id": "invite",
+      "title": "Invite",
+      "description": "Clips addressed to one person: who they are, why them, what you are offering, where to click."
+    }
+  ]
+}
