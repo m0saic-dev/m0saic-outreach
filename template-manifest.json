@@ -73,6 +73,30 @@
       "preview": {
         "image": "assets/templates/@outreach__social__hook-wall__v1/preview.png"
       }
+    },
+    {
+      "slug": "live-hooks",
+      "templateKey": "@outreach/social/live-hooks/v1",
+      "title": "04 · Live Hooks",
+      "description": "One visual, up to four hooks that land word by word: the animated text layer of a short-form post, fitted and drawn the same way every render. One hook renders the post itself; several render them side by side to compare.",
+      "tags": [
+        "social",
+        "hooks",
+        "short-form",
+        "ugc",
+        "captions",
+        "kinetic-text",
+        "variants",
+        "a-b-test",
+        "vertical",
+        "video"
+      ],
+      "pack": "social",
+      "preview": {
+        "image": "assets/templates/@outreach__social__live-hooks__v1/preview.png",
+        "video": "assets/templates/@outreach__social__live-hooks__v1/preview.mp4",
+        "poster": "assets/templates/@outreach__social__live-hooks__v1/poster.png"
+      }
     }
   ],
   "packs": [

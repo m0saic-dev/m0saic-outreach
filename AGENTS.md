@@ -8,7 +8,8 @@ Entry point for coding agents working in this repo. Humans want
 One-off marketing templates, each written for a specific job and kept
 generic: an agent fills a props file and m0saic renders. Today:
 `@outreach/invite/why-you/v1` (a personalized clip per recipient) and
-`@outreach/social/hook-wall/v1` (the hook layer of a short-form post),
+`@outreach/social/live-hooks/v1` (the animated hook layer of a short-form
+post; `hook-wall/v1` is its superseded static first version),
 plus the hello-world front door. The namespace is `@outreach` (`src/repo.ts`); it
 does not carry the m0saic name on purpose - hosts flag an unsigned repo
 that calls itself m0saic.
@@ -75,9 +76,17 @@ and `deprecated: { replacement }` on the old one.
 - The canvas is `document.backgroundColor`, never a full-frame rect.
 - A file prop needs an absolute path at render; `tools/outreach.mjs`
   resolves a relative one against the props file (why-you only).
-- Shared text fitting lives in `src/_shared/text.ts` (hook-wall uses it;
+- Shared text fitting lives in `src/_shared/text.ts` (the social pack uses it;
   why-you/v1 shipped with its own copy and is not edited).
-- hook-wall: an outlined hook is the glyph path from `textToPath` as two
+- A changed template is a NEW folder. The manifest refuses two versions
+  of one pack/slug, so the animated hook-wall shipped as `live-hooks/v1`
+  and `hook-wall/v1` carries `deprecated: { replacement }`.
+- live-hooks: each word is its own tight rect with a `slide-up` entrance
+  (an offset and a gate, nothing per pixel). Gated tiles ride one overlay
+  chain: the engine warns past 20 (`OVERLAY_CHAIN_DEEP`); 33 words (chain
+  55) rendered correctly and `LIVE_HOOKS_MAX_UNITS` is set there. Nested
+  sub-mosaics per tile are the way to lift it.
+- hook-wall / live-hooks: an outlined hook is the glyph path from `textToPath` as two
   masked colour tiles (stroked dark, filled white) on one rect - the svg
   rasterizer has no stroke. Output kind and canvas come from
   `resolveOutputHints(props)`; the static hints are its answer at defaults.

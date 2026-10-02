@@ -2,6 +2,7 @@ import type {
   MosaicColor,
   MosaicDocument,
   MosaicEngineContext,
+  MosaicOverlayExpr,
   MosaicSource,
 } from "@m0saic/types";
 import { asAssetId, asTemplateId } from "@m0saic/types";
@@ -10,6 +11,7 @@ import {
   bindProp,
   defineMosaicTemplate,
   definePropsSchema,
+  entrance,
   makeColorTile,
   placeInsetPieces,
   resolvePinnedDurationMs,
@@ -19,10 +21,10 @@ import {
 import type { LayoutConstraint } from "@m0saic/template-utils";
 import { textFitsMeasured, withLayoutIntent } from "../../../_shared/layout";
 import type { TextFit } from "../../../_shared/text";
-import { LINE, blockH, budget, cleanCopy, facePath, fitText } from "../../../_shared/text";
+import { LINE, blockH, budget, cleanCopy, facePath, fitText, widthOf } from "../../../_shared/text";
 
 /**
- * `@outreach/social/hook-wall/v1` - the text layer of a short-form post: one
+ * `@outreach/social/live-hooks/v1` - the text layer of a short-form post: one
  * visual underneath, the hook on top, drawn the same way every render.
  *
  * ONE CONCEPT: **generate the take once, render the words many times.** A
@@ -48,22 +50,34 @@ import { LINE, blockH, budget, cleanCopy, facePath, fitText } from "../../../_sh
  * (the white type), two masked colour tiles on the same rect, from the same
  * path - they cannot drift apart.
  *
+ * This is hook-wall with MOTION, and so the output is a clip: the hook lands word by
+ * word (or line by line, or all at once), each unit hopping up into place,
+ * and when several hooks are compared the tiles start one after another.
+ * Every word is its own tight rect, cut from the same fitted block, so the
+ * animated hook ends on exactly the pixels the static one would have.
+ * `hookMotion: "none"` is hook-wall's behaviour: a still visual renders a PNG.
+ * A long comparison steps down by itself (words -> lines -> all at once) to
+ * stay inside the engine's budget of gated tiles.
+ *
  * Text is Latin (the bundled Roboto). Emoji in a hook are dropped, not drawn
  * as empty boxes; an emoji layer is the obvious v2.
  */
 
-export type HookWallStyle = "outline" | "box";
-export type HookWallPosition = "top" | "middle";
+export type LiveHooksStyle = "outline" | "box";
+export type LiveHooksPosition = "top" | "middle";
+export type LiveHooksMotion = "words" | "lines" | "pop" | "none";
 
-export type HookWallProps = {
+export type LiveHooksProps = {
   /** Zero or one visual - an image or a video (absolute path). Empty draws a stand-in scene. */
   visual?: string[];
   /** One to four hooks. One renders the post; several render them side by side. */
   hooks?: string[];
   /** How the hook is drawn: white type with a dark edge, or dark type on a white label. */
-  hookStyle?: HookWallStyle;
+  hookStyle?: LiveHooksStyle;
   /** Where the hook sits in the frame. Both keep clear of the platform's interface. */
-  hookPosition?: HookWallPosition;
+  hookPosition?: LiveHooksPosition;
+  /** How the hook arrives: word by word, line by line, all at once, or not at all (a still). */
+  hookMotion?: LiveHooksMotion;
   /** The line above the tiles when comparing. Empty removes it. */
   title?: string;
   /** The line under the tiles when comparing. Empty removes it. */
@@ -74,19 +88,19 @@ export type HookWallProps = {
   background?: string;
   /** The title and the note (#rrggbb). */
   ink?: string;
-  /** Clip length in whole seconds (2..60) when the visual is a video. */
+  /** Clip length in whole seconds (2..60) when the render is a clip. */
   durationSec?: number;
   /** Dev-only: check the layout contract and draw it over the frame. */
   debugLayout?: boolean;
 };
 
-const ID = "@outreach/social/hook-wall/v1";
+const ID = "@outreach/social/live-hooks/v1";
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const VIDEO_EXT = /\.(mp4|mov|m4v|webm|mkv)$/i;
 
-export const HOOK_WALL_MAX_HOOKS = 4;
-export const HOOK_WALL_MIN_SEC = 2;
-export const HOOK_WALL_MAX_SEC = 60;
+export const LIVE_HOOKS_MAX_HOOKS = 4;
+export const LIVE_HOOKS_MIN_SEC = 2;
+export const LIVE_HOOKS_MAX_SEC = 60;
 
 const DEFAULTS = {
   hooks: [
@@ -94,8 +108,9 @@ const DEFAULTS = {
     "POV: you finally stopped doing this by hand",
     "3 things I wish I knew a year ago",
   ],
-  hookStyle: "outline" as HookWallStyle,
-  hookPosition: "top" as HookWallPosition,
+  hookStyle: "outline" as LiveHooksStyle,
+  hookPosition: "top" as LiveHooksPosition,
+  hookMotion: "words" as LiveHooksMotion,
   title: "One visual, three hooks",
   note: "Same take, same type, same place. Only the words change.",
   accent: "#ff7a45",
@@ -109,7 +124,7 @@ const SCENE = { sky: "#2b3a55", sun: "#f4b860", ground: "#1c2638" } as const;
 const HOOK_LIGHT = "#ffffff" as MosaicColor;
 const HOOK_DARK = "#101010" as MosaicColor;
 
-const propsSchema = definePropsSchema<HookWallProps>({
+const propsSchema = definePropsSchema<LiveHooksProps>({
   visual: {
     type: "media[]",
     required: false,
@@ -133,6 +148,12 @@ const propsSchema = definePropsSchema<HookWallProps>({
     required: false,
     description: 'Where the hook sits: "top" or "middle". Both stay clear of the platform\'s rail and caption.',
     meta: { constraints: { oneOf: ["top", "middle"] }, ui: { label: "Hook position", order: 4 } },
+  },
+  hookMotion: {
+    type: "string",
+    required: false,
+    description: 'How the hook arrives: "words" (one word at a time), "lines", "pop" (all at once) or "none" (no motion; a still visual then renders an image).',
+    meta: { constraints: { oneOf: ["words", "lines", "pop", "none"] }, ui: { label: "Hook motion", order: 4.5 } },
   },
   title: {
     type: "string",
@@ -167,8 +188,8 @@ const propsSchema = definePropsSchema<HookWallProps>({
   durationSec: {
     type: "number",
     required: false,
-    description: "Clip length in whole seconds (2..60) when the visual is a video; an explicit duration pin overrides it. A still visual renders an image.",
-    meta: { constraints: { min: HOOK_WALL_MIN_SEC, max: HOOK_WALL_MAX_SEC }, ui: { label: "Length (s)", order: 10 } },
+    description: "Clip length in whole seconds (2..60) when the render is a clip (a video visual, or any hook motion); an explicit duration pin overrides it.",
+    meta: { constraints: { min: LIVE_HOOKS_MIN_SEC, max: LIVE_HOOKS_MAX_SEC }, ui: { label: "Length (s)", order: 10 } },
   },
   debugLayout: {
     type: "boolean",
@@ -180,32 +201,90 @@ const propsSchema = definePropsSchema<HookWallProps>({
 
 /* ── geometry: one pure function of the copy and the canvas ── */
 
-export type HookWallRect = { x: number; y: number; w: number; h: number };
-export type HookWallBlock = { fit: TextFit; rect: HookWallRect };
+export type LiveHooksRect = { x: number; y: number; w: number; h: number };
+export type LiveHooksBlock = { fit: TextFit; rect: LiveHooksRect };
 
-export type HookWallTile = {
+export type LiveHooksTile = {
   /** The post: 9:16 when compared, the whole canvas when alone. */
-  rect: HookWallRect;
+  rect: LiveHooksRect;
   /** Where the hook may be: inside the platform's safe area. */
-  safe: HookWallRect;
+  safe: LiveHooksRect;
   /** The fitted hook. */
   fit: TextFit;
   /** The rect the hook is drawn in (the label, in box style). */
-  hook: HookWallRect;
+  hook: LiveHooksRect;
   /** The tile number under the post, when compared. */
-  index: HookWallBlock | null;
+  index: LiveHooksBlock | null;
+  /** What arrives, in order: each word, each line, or the whole block (one unit when nothing moves). */
+  units: LiveHooksUnit[];
 };
 
-export type HookWallLayout = {
+/** One piece of a hook that arrives on its own: its text, its tight rect, and when (null = always there). */
+export type LiveHooksUnit = { text: string; rect: LiveHooksRect; atSec: number | null };
+
+/**
+ * The most units one render may carry before the motion steps down (words ->
+ * lines -> pop). Every unit is a gated tile (two, outlined), and gated tiles
+ * ride one overlay chain: the engine warns past 20 (OVERLAY_CHAIN_DEEP), and
+ * 33 units (a chain of 55) is the most this template has been rendered and
+ * checked at.
+ */
+export const LIVE_HOOKS_MAX_UNITS = 34;
+
+/** When each unit lands: tiles start one after another, units within a tile in reading order. */
+export function liveHooksTimes(unitCounts: number[], motion: LiveHooksMotion): Array<Array<number | null>> {
+  if (motion === "none") return unitCounts.map((n) => Array.from({ length: n }, () => null));
+  const step = motion === "words" ? 0.13 : motion === "lines" ? 0.3 : 0;
+  const tileStagger = unitCounts.length > 1 ? 0.5 : 0;
+  return unitCounts.map((n, k) => Array.from({ length: n }, (_, j) => Math.round((0.3 + k * tileStagger + j * step) * 1000) / 1000));
+}
+
+/**
+ * Cut a fitted hook into the rects its units are drawn in. The block is
+ * centred in the hook rect exactly as the static hook is; a line is centred
+ * on its own width; a word sits at the measured advance of the words before
+ * it. `padFor` is the room a rect leaves around a text of that width: the
+ * outline's reach, or the slack the fit rule promises a text source.
+ */
+function cutUnits(fit: TextFit, hook: LiveHooksRect, padFor: (w: number) => number, motion: LiveHooksMotion): Array<{ text: string; rect: LiveHooksRect }> {
+  if (motion === "none" || motion === "pop") return [{ text: fit.lines.join("\n"), rect: hook }];
+  const step = LINE * fit.px;
+  const top = hook.y + (hook.h - fit.lines.length * step) / 2;
+  const out: Array<{ text: string; rect: LiveHooksRect }> = [];
+  fit.lines.forEach((line, i) => {
+    const lineW = widthOf(line, fit.px, fit.face);
+    const x0 = hook.x + (hook.w - lineW) / 2;
+    const padY = padFor(0);
+    const y = Math.round(top + i * step - padY);
+    const h = Math.ceil(step + 2 * padY);
+    if (motion === "lines") {
+      const pad = padFor(lineW);
+      out.push({ text: line, rect: { x: Math.round(x0 - pad), y, w: Math.ceil(lineW + 2 * pad), h } });
+      return;
+    }
+    const words = line.split(" ").filter(Boolean);
+    words.forEach((word, k) => {
+      const wordW = widthOf(word, fit.px, fit.face);
+      const dx = widthOf(words.slice(0, k + 1).join(" "), fit.px, fit.face) - wordW;
+      const pad = padFor(wordW);
+      out.push({ text: word, rect: { x: Math.round(x0 + dx - pad), y, w: Math.ceil(wordW + 2 * pad), h } });
+    });
+  });
+  return out;
+}
+
+export type LiveHooksLayout = {
   W: number;
   H: number;
   /** Two or more hooks: tiles side by side under a title. */
   wall: boolean;
   /** The dark edge of an outlined hook, in px (it grows past the glyphs by this much). */
   edge: number;
-  title: HookWallBlock | null;
-  note: HookWallBlock | null;
-  tiles: HookWallTile[];
+  /** The motion actually used: the one asked for, stepped down when the render would carry too many gated tiles. */
+  motion: LiveHooksMotion;
+  title: LiveHooksBlock | null;
+  note: LiveHooksBlock | null;
+  tiles: LiveHooksTile[];
 };
 
 /**
@@ -213,26 +292,26 @@ export type HookWallLayout = {
  * right-hand rail and the caption block. `top` hangs the hook from the top
  * of that area; `middle` centres it in the upper two thirds.
  */
-export const HOOK_SAFE = { left: 0.08, right: 0.14, top: 0.11, bottom: 0.3 } as const;
+export const LIVE_HOOKS_SAFE = { left: 0.08, right: 0.14, top: 0.11, bottom: 0.3 } as const;
 
-export function layoutHookWall(
-  copy: { hooks: string[]; title: string; note: string; style: HookWallStyle; position: HookWallPosition },
+export function layoutLiveHooks(
+  copy: { hooks: string[]; title: string; note: string; style: LiveHooksStyle; position: LiveHooksPosition; motion: LiveHooksMotion },
   W: number,
   H: number,
-): HookWallLayout {
+): LiveHooksLayout {
   const S = Math.min(W, H);
   const n = copy.hooks.length;
   const wall = n > 1;
-  const clamp = (r: HookWallRect): HookWallRect => {
+  const clamp = (r: LiveHooksRect): LiveHooksRect => {
     const x = Math.max(0, Math.min(W - 1, Math.round(r.x)));
     const y = Math.max(0, Math.min(H - 1, Math.round(r.y)));
     return { x, y, w: Math.max(1, Math.min(W - x, Math.round(r.w))), h: Math.max(1, Math.min(H - y, Math.round(r.h))) };
   };
 
   // ── the posts ──
-  let title: HookWallBlock | null = null;
-  let note: HookWallBlock | null = null;
-  let posts: HookWallRect[];
+  let title: LiveHooksBlock | null = null;
+  let note: LiveHooksBlock | null = null;
+  let posts: LiveHooksRect[];
   let indexPx = 0;
   if (!wall) {
     posts = [{ x: 0, y: 0, w: W, h: H }];
@@ -271,11 +350,11 @@ export function layoutHookWall(
   // ── the hook on each post: every tile shares ONE size, so the variants compare ──
   const post = posts[0];
   const edge = copy.style === "outline" ? Math.max(1, Math.round(0.0045 * post.w)) : 0;
-  const safeOf = (p: HookWallRect): HookWallRect => clamp({
-    x: p.x + HOOK_SAFE.left * p.w,
-    y: p.y + HOOK_SAFE.top * p.h,
-    w: (1 - HOOK_SAFE.left - HOOK_SAFE.right) * p.w,
-    h: (1 - HOOK_SAFE.top - HOOK_SAFE.bottom) * p.h,
+  const safeOf = (p: LiveHooksRect): LiveHooksRect => clamp({
+    x: p.x + LIVE_HOOKS_SAFE.left * p.w,
+    y: p.y + LIVE_HOOKS_SAFE.top * p.h,
+    w: (1 - LIVE_HOOKS_SAFE.left - LIVE_HOOKS_SAFE.right) * p.w,
+    h: (1 - LIVE_HOOKS_SAFE.top - LIVE_HOOKS_SAFE.bottom) * p.h,
   });
   const safe0 = safeOf(post);
   const padX = copy.style === "box" ? Math.round(0.03 * post.w) : 2 * edge;
@@ -289,14 +368,14 @@ export function layoutHookWall(
   px = Math.min(...fits.map((f) => f.px));
   fits = copy.hooks.map((h) => fitText(h, maxW, maxH, px, px, 4, "bold"));
 
-  const tiles: HookWallTile[] = posts.map((p, i) => {
+  const drafts = posts.map((p, i) => {
     const safe = safeOf(p);
     const fit = fits[i];
     const w = copy.style === "box" ? Math.min(safe.w, Math.ceil(fit.width / 0.94) + 4 + 2 * padX) : safe.w;
     const h = Math.min(safe.h, fit.h + 2 * padY);
     const y = copy.position === "top" ? safe.y : safe.y + Math.max(0, Math.floor((safe.h * 0.72 - h) / 2));
     const hook = clamp({ x: safe.x + Math.floor((safe.w - w) / 2), y, w, h });
-    let index: HookWallBlock | null = null;
+    let index: LiveHooksBlock | null = null;
     if (wall) {
       const ifit = fitText(String(i + 1).padStart(2, "0"), budget(p.w), Number.MAX_SAFE_INTEGER, indexPx, indexPx, 1, "bold");
       index = { fit: ifit, rect: clamp({ x: p.x, y: p.y + p.h, w: p.w, h: ifit.h }) };
@@ -304,7 +383,27 @@ export function layoutHookWall(
     return { rect: p, safe, fit, hook, index };
   });
 
-  return { W, H, wall, edge, title, note, tiles };
+  // ── the units: step the motion down until the gated tiles fit the budget ──
+  // Outlined: room for the edge. Box: a text source, so its rect carries the fit rule's slack (cell * 0.94 - 2px).
+  const unitPad = (w: number) => (copy.style === "outline" ? 2 * edge + 1 : Math.ceil(0.035 * w + 2));
+  const ladder: LiveHooksMotion[] = copy.motion === "words" ? ["words", "lines", "pop"] : copy.motion === "lines" ? ["lines", "pop"] : [copy.motion];
+  let motion = ladder[ladder.length - 1];
+  let cuts = drafts.map((d) => cutUnits(d.fit, d.hook, unitPad, motion));
+  for (const candidate of ladder) {
+    const tried = drafts.map((d) => cutUnits(d.fit, d.hook, unitPad, candidate));
+    if (tried.reduce((a, u) => a + u.length, 0) <= LIVE_HOOKS_MAX_UNITS) {
+      motion = candidate;
+      cuts = tried;
+      break;
+    }
+  }
+  const times = liveHooksTimes(cuts.map((u) => u.length), motion);
+  const tiles: LiveHooksTile[] = drafts.map((d, i) => ({
+    ...d,
+    units: cuts[i].map((u, j) => ({ text: u.text, rect: u.rect.w === d.hook.w && u.rect.h === d.hook.h ? d.hook : clamp(u.rect), atSec: times[i][j] })),
+  }));
+
+  return { W, H, wall, edge, motion, title, note, tiles };
 }
 
 /**
@@ -313,54 +412,51 @@ export function layoutHookWall(
  * a glyph path, not a text source, so its fit is asserted in the test from
  * the measured width instead of by `textFits`.)
  */
-export function hookWallContract(L: HookWallLayout, style: HookWallStyle): LayoutConstraint[] {
+export function liveHooksContract(L: LiveHooksLayout, style: LiveHooksStyle): LayoutConstraint[] {
   const out: LayoutConstraint[] = [];
   if (L.title) out.push(textFitsMeasured("title", L.title.fit.lines.join("\n"), L.title.fit.px, L.title.fit.width));
   if (L.note) out.push(textFitsMeasured("note", L.note.fit.lines.join("\n"), L.note.fit.px, L.note.fit.width));
   L.tiles.forEach((t, i) => {
-    if (style === "box") out.push(textFitsMeasured(`hook-${i}`, t.fit.lines.join("\n"), t.fit.px, t.fit.width));
-    out.push({ label: `hook-${i}` });
+    t.units.forEach((u, j) => {
+      if (style === "box") out.push(textFitsMeasured(`hook-${i}-${j}`, u.text, t.fit.px, u.text.split("\n").reduce((m, l) => Math.max(m, widthOf(l, t.fit.px, t.fit.face)), 0)));
+      out.push({ label: `hook-${i}-${j}` });
+    });
     if (t.index) out.push(textFitsMeasured(`index-${i}`, t.index.fit.lines.join("\n"), t.index.fit.px, t.index.fit.width));
   });
   if (L.wall) out.push({ label: "post", aspect: 9 / 16, aspectTolerance: 0.03 });
   return out;
 }
 
-/** Video when the visual is a video file; a still (or no visual) renders an image. */
-function outputFormat(props: HookWallProps | undefined) {
+/** A clip when the hook moves or the visual is a video file; a still with no motion renders an image. */
+function outputFormat(props: LiveHooksProps | undefined) {
   const ref = Array.isArray(props?.visual) ? String(props?.visual[0] ?? "") : "";
-  return VIDEO_EXT.test(ref.trim())
+  const moves = (props?.hookMotion ?? DEFAULTS.hookMotion) !== "none";
+  return moves || VIDEO_EXT.test(ref.trim())
     ? ({ kind: "video", container: "mp4" } as const)
     : ({ kind: "image", container: "png" } as const);
 }
 
-export const HookWallV1 = defineMosaicTemplate<HookWallProps>({
+export const LiveHooksV1 = defineMosaicTemplate<LiveHooksProps>({
   id: asTemplateId(ID),
-  label: "03 · Hook Wall",
+  label: "04 · Live Hooks",
   version: 1,
   description:
-    "One visual, up to four hooks: the text layer of a short-form post, fitted and drawn the same way every render. One hook renders the post itself; several render them side by side to compare.",
+    "One visual, up to four hooks that land word by word: the animated text layer of a short-form post, fitted and drawn the same way every render. One hook renders the post itself; several render them side by side to compare.",
   capabilities: { tier: "core" },
-  tags: ["social", "hooks", "short-form", "ugc", "captions", "variants", "a-b-test", "vertical"],
-  // Superseded the day it shipped: live-hooks is the same layout with the hook in motion.
-  deprecated: {
-    reason: "live-hooks animates the hook (word by word) and renders a clip; hookMotion none there is this template.",
-    replacement: asTemplateId("@outreach/social/live-hooks/v1"),
-    since: "2026-10-02",
-  },
+  tags: ["social", "hooks", "short-form", "ugc", "captions", "kinetic-text", "variants", "a-b-test", "vertical", "video"],
 
   outputHints: {
     width: 1920,
     height: 1080,
     fps: 30,
     durationMs: DEFAULTS.durationSec * 1000,
-    format: { kind: "image", container: "png" },
-    note: "Several hooks compare side by side on a landscape frame; one hook renders the post itself at 1080x1920. A still visual renders a PNG, a video visual an MP4.",
+    format: { kind: "video", container: "mp4" },
+    note: "Several hooks compare side by side on a landscape frame; one hook renders the post itself at 1080x1920. A clip by default; a still visual with hookMotion none renders a PNG.",
   },
-  // The canvas and the kind are knobs: one hook is the 9:16 post, a video visual makes a clip.
+  // The canvas and the kind are knobs: one hook is the 9:16 post; motion or a video visual makes a clip.
   resolveOutputHints: (props) => {
     const count = Array.isArray(props?.hooks) ? props.hooks.filter((h) => String(h).trim()).length : DEFAULTS.hooks.length;
-    const sec = numberOr(props?.durationSec, DEFAULTS.durationSec, HOOK_WALL_MIN_SEC, HOOK_WALL_MAX_SEC);
+    const sec = numberOr(props?.durationSec, DEFAULTS.durationSec, LIVE_HOOKS_MIN_SEC, LIVE_HOOKS_MAX_SEC);
     return {
       ...(count === 1 ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 }),
       durationMs: Math.round(sec * 1000),
@@ -374,6 +470,7 @@ export const HookWallV1 = defineMosaicTemplate<HookWallProps>({
     hooks: [...DEFAULTS.hooks],
     hookStyle: DEFAULTS.hookStyle,
     hookPosition: DEFAULTS.hookPosition,
+    hookMotion: DEFAULTS.hookMotion,
     title: DEFAULTS.title,
     note: DEFAULTS.note,
     accent: DEFAULTS.accent,
@@ -389,7 +486,7 @@ export const HookWallV1 = defineMosaicTemplate<HookWallProps>({
   render,
 });
 
-export default HookWallV1;
+export default LiveHooksV1;
 
 /* ── input: the schema is documentation, render() is the gate ── */
 
@@ -406,10 +503,10 @@ function pickText(value: unknown, fallback: string, name: string): string {
 
 function pickHooks(value: unknown): string[] {
   if (value === undefined || value === null) return [...DEFAULTS.hooks];
-  if (!Array.isArray(value)) throw new Error(`${ID}: hooks must be an array of one to ${HOOK_WALL_MAX_HOOKS} strings.`);
+  if (!Array.isArray(value)) throw new Error(`${ID}: hooks must be an array of one to ${LIVE_HOOKS_MAX_HOOKS} strings.`);
   const hooks = value.map((v, i) => pickText(v, "", `hooks[${i}]`)).filter((h) => h.length > 0);
-  if (hooks.length < 1 || hooks.length > HOOK_WALL_MAX_HOOKS) {
-    throw new Error(`${ID}: hooks must carry one to ${HOOK_WALL_MAX_HOOKS} non-empty lines. Got ${hooks.length}.`);
+  if (hooks.length < 1 || hooks.length > LIVE_HOOKS_MAX_HOOKS) {
+    throw new Error(`${ID}: hooks must carry one to ${LIVE_HOOKS_MAX_HOOKS} non-empty lines. Got ${hooks.length}.`);
   }
   return hooks;
 }
@@ -430,8 +527,8 @@ function pickOne<T extends string>(value: unknown, allowed: readonly T[], fallba
 function pickSeconds(value: unknown): number {
   if (value === undefined || value === null) return DEFAULTS.durationSec;
   const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
-  if (typeof n !== "number" || !Number.isInteger(n) || n < HOOK_WALL_MIN_SEC || n > HOOK_WALL_MAX_SEC) {
-    throw new Error(`${ID}: durationSec must be a whole number from ${HOOK_WALL_MIN_SEC} to ${HOOK_WALL_MAX_SEC}. Got ${JSON.stringify(value)}.`);
+  if (typeof n !== "number" || !Number.isInteger(n) || n < LIVE_HOOKS_MIN_SEC || n > LIVE_HOOKS_MAX_SEC) {
+    throw new Error(`${ID}: durationSec must be a whole number from ${LIVE_HOOKS_MIN_SEC} to ${LIVE_HOOKS_MAX_SEC}. Got ${JSON.stringify(value)}.`);
   }
   return n;
 }
@@ -458,8 +555,9 @@ function mix(a: MosaicColor, b: MosaicColor, t: number): MosaicColor {
 
 /* ── sources ── */
 
-function textSource(fit: TextFit, color: MosaicColor, label: string, hAlign: "left" | "center"): MosaicSource {
+function textSource(fit: TextFit, color: MosaicColor, label: string, hAlign: "left" | "center", overlay?: MosaicOverlayExpr): MosaicSource {
   return tag({
+    ...(overlay ? { overlay } : {}),
     type: "text",
     rasterizer: "svg",
     renderMode: { kind: "image" },
@@ -480,24 +578,25 @@ function textSource(fit: TextFit, color: MosaicColor, label: string, hAlign: "le
  * dark tile whose mask is the path filled AND stroked, and a white tile
  * whose mask is the path filled.
  */
-function outlinedHook(fit: TextFit, rect: HookWallRect, edge: number): { edgeTile: MosaicSource; fillTile: MosaicSource } {
+function outlinedHook(text: string, fit: TextFit, rect: LiveHooksRect, edge: number, overlay?: MosaicOverlayExpr): { edgeTile: MosaicSource; fillTile: MosaicSource } {
   const fontPath = facePath(fit.face);
   const d = textToPath(
-    fit.lines.join("\n"),
+    text,
     { fontSize: fit.px, hAlign: "center", vAlign: "middle", lineHeight: LINE, ...(fontPath ? { fontPath } : {}) },
     { width: rect.w, height: rect.h },
   );
   const bounds = { x: 0, y: 0, width: rect.w, height: rect.h };
   return {
-    edgeTile: makeColorTile(HOOK_DARK, { mask: { kind: "inline-mask", localPath: d, bounds, strokes: [{ d, width: 2 * edge }] } }) as MosaicSource,
-    fillTile: makeColorTile(HOOK_LIGHT, { mask: { kind: "inline-mask", localPath: d, bounds } }) as MosaicSource,
+    edgeTile: makeColorTile(HOOK_DARK, { mask: { kind: "inline-mask", localPath: d, bounds, strokes: [{ d, width: 2 * edge }] }, ...(overlay ? { overlay } : {}) }) as MosaicSource,
+    fillTile: makeColorTile(HOOK_LIGHT, { mask: { kind: "inline-mask", localPath: d, bounds }, ...(overlay ? { overlay } : {}) }) as MosaicSource,
   };
 }
 
-async function render(props: HookWallProps, ctx: MosaicEngineContext): Promise<MosaicDocument> {
+async function render(props: LiveHooksProps, ctx: MosaicEngineContext): Promise<MosaicDocument> {
   const hooks = pickHooks(props.hooks);
   const style = pickOne(props.hookStyle, ["outline", "box"] as const, DEFAULTS.hookStyle, "hookStyle");
   const position = pickOne(props.hookPosition, ["top", "middle"] as const, DEFAULTS.hookPosition, "hookPosition");
+  const asked = pickOne(props.hookMotion, ["words", "lines", "pop", "none"] as const, DEFAULTS.hookMotion, "hookMotion");
   const title = pickText(props.title, DEFAULTS.title, "title");
   const note = pickText(props.note, DEFAULTS.note, "note");
   const accent = pickColor(props.accent, DEFAULTS.accent, "accent");
@@ -519,10 +618,13 @@ async function render(props: HookWallProps, ctx: MosaicEngineContext): Promise<M
 
   const W = Math.max(1, Math.round(ctx.target.width));
   const H = Math.max(1, Math.round(ctx.target.height));
-  const L = layoutHookWall({ hooks, title, note, style, position }, W, H);
+  const L = layoutLiveHooks({ hooks, title, note, style, position, motion: asked }, W, H);
+  /** A unit hops up into its place at `atSec`: an offset and a gate, nothing per pixel. */
+  const arrive = (atSec: number | null): MosaicOverlayExpr | undefined =>
+    atSec === null ? undefined : entrance({ kind: "slide-up", durationMs: 140, atSec, ease: "easeOut" });
 
   const pieces: Parameters<typeof placeInsetPieces>[0]["pieces"] = [];
-  const piece = (rect: HookWallRect, importance: number, source: MosaicSource) => pieces.push({ rect: { ...rect, importance }, source });
+  const piece = (rect: LiveHooksRect, importance: number, source: MosaicSource) => pieces.push({ rect: { ...rect, importance }, source });
 
   if (L.title) piece(L.title.rect, 2, bindProp(textSource(L.title.fit, ink, "title", "left"), "title"));
   if (L.note) piece(L.note.rect, 2, bindProp(textSource(L.note.fit, mix(ink, bg, 0.62), "note", "left"), "note"));
@@ -551,13 +653,23 @@ async function render(props: HookWallProps, ctx: MosaicEngineContext): Promise<M
 
     // ── the hook ──
     if (style === "box") {
-      piece(t.hook, 4, tag(makeColorTile(HOOK_LIGHT, { effects: { rounding: { cornerStyle: "rounded", borderRadius: 0.35 } } }) as MosaicSource, `hook-label-${i}`));
-      piece(t.hook, 5, bindProp(textSource(t.fit, HOOK_DARK, `hook-${i}`, "center"), "hooks", i));
-    } else {
-      const { edgeTile, fillTile } = outlinedHook(t.fit, t.hook, L.edge);
-      piece(t.hook, 4, tag(edgeTile, `hook-edge-${i}`));
-      piece(t.hook, 5, bindProp(tag(fillTile, `hook-${i}`), "hooks", i));
+      // The label arrives with the first unit, so a moving hook never shows an empty label.
+      const first = t.units[0].atSec;
+      const labelGate = first === null ? {} : { overlay: { enable: `gte(t,${first})`, window: { startSec: first } } };
+      piece(t.hook, 4, tag(makeColorTile(HOOK_LIGHT, { effects: { rounding: { cornerStyle: "rounded", borderRadius: 0.35 } }, ...labelGate }) as MosaicSource, `hook-label-${i}`));
     }
+    t.units.forEach((u, j) => {
+      const overlay = arrive(u.atSec);
+      const label = `hook-${i}-${j}`;
+      const bound = <T extends MosaicSource>(src: T) => (j === 0 ? bindProp(src, "hooks", i) : src);
+      if (style === "box") {
+        piece(u.rect, 5, bound(textSource({ ...t.fit, lines: u.text.split("\n") }, HOOK_DARK, label, "center", overlay)));
+      } else {
+        const { edgeTile, fillTile } = outlinedHook(u.text, t.fit, u.rect, L.edge, overlay);
+        piece(u.rect, 4, tag(edgeTile, `hook-edge-${i}-${j}`));
+        piece(u.rect, 5, bound(tag(fillTile, label)));
+      }
+    });
 
     if (t.index) piece(t.index.rect, 2, i === 0 ? bindProp(textSource(t.index.fit, accent, `index-${i}`, "left"), "accent") : textSource(t.index.fit, accent, `index-${i}`, "left"));
   });
@@ -572,11 +684,11 @@ async function render(props: HookWallProps, ctx: MosaicEngineContext): Promise<M
     assets,
     size: { width: W, height: H },
     fps: ctx.target.fps,
-    ...(isVideo ? { durationMs } : {}),
+    ...(isVideo || L.motion !== "none" ? { durationMs } : {}),
     // Alone with no visual, the page IS the stand-in sky.
     backgroundColor: !L.wall && !visualId ? (SCENE.sky as MosaicColor) : bg,
     sources: placed.sources,
-    editor: { label: `Hook Wall - ${hooks.length} ${hooks.length === 1 ? "hook" : "hooks"}, ${style}` },
+    editor: { label: `Live Hooks - ${hooks.length} ${hooks.length === 1 ? "hook" : "hooks"}, ${style}, ${L.motion}` },
   };
-  return withLayoutIntent(doc, ctx, { templateId: ID, constraints: hookWallContract(L, style), debug: props.debugLayout === true });
+  return withLayoutIntent(doc, ctx, { templateId: ID, constraints: liveHooksContract(L, style), debug: props.debugLayout === true });
 }

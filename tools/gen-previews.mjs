@@ -32,6 +32,8 @@ const ANIMATED_PREVIEW_IDS = new Set([
   "@outreach/basics/hello-world/v1",
   // Four timed beats: a still shows one of them, the clip shows the message.
   "@outreach/invite/why-you/v1",
+  // The hooks land word by word: the motion is the template.
+  "@outreach/social/live-hooks/v1",
 ]);
 
 /** Clip dims per id; default 1920×1080 (previews look like the product). */
@@ -43,6 +45,8 @@ const STILL_AT_SEC = new Map([
   ["@outreach/basics/hello-world/v1", 2.45],
   // Beat one: the greeting, static from frame 0.
   ["@outreach/invite/why-you/v1", 0.5],
+  // After the last word of the last tile has landed.
+  ["@outreach/social/live-hooks/v1", 4],
 ]);
 /** Ids whose still must be CUT from the mp4 rather than rendered directly.
  *  Two different reasons, both landing here:
@@ -63,6 +67,8 @@ const STILL_FROM_VIDEO = new Set([
   // The CLI does not render an animated template as one image; the greeting
   // frame is cut from the clip instead.
   "@outreach/invite/why-you/v1",
+  // (2) frame 0 is the visual before any hook has landed.
+  "@outreach/social/live-hooks/v1",
 ]);
 const FFMPEG = process.env.M0SAIC_FFMPEG || "ffmpeg";
 

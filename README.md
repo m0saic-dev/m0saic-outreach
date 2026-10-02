@@ -7,7 +7,7 @@ the output is the same pixels every time, and nobody opens an editor.
 | Template | What it makes |
 |---|---|
 | [`@outreach/invite/why-you/v1`](#why-you-a-personalized-clip-per-recipient) | A 15-second clip addressed to one person: their name and face, why them, your pitch, their link. |
-| [`@outreach/social/hook-wall/v1`](#hook-wall-one-visual-many-hooks) | The text layer of a short-form post: one visual, up to four hooks, as the post itself or side by side to compare. |
+| [`@outreach/social/live-hooks/v1`](#live-hooks-one-visual-many-hooks-landing-word-by-word) | The animated text layer of a short-form post: one visual, up to four hooks landing word by word, as the post itself or side by side to compare. |
 
 ## Why You: a personalized clip per recipient
 
@@ -169,52 +169,67 @@ The reasons are the whole clip. A reason that could be sent to anyone
 not less. A reason that names what the person actually does is what makes
 them wonder how the video was made.
 
-## Hook Wall: one visual, many hooks
+## Live Hooks: one visual, many hooks, landing word by word
 
-![Four hooks over one stand-in visual, side by side](examples/hook-wall/wall.png)
+![Four hooks landing word by word over one stand-in visual](examples/live-hooks/wall.gif)
 
 A generated visual is the expensive half of a short-form post, and you
 cannot generate the same one twice. The hook over it is the cheap half, and
-it is the half that gets tested. `@outreach/social/hook-wall/v1` keeps them
+it is the half that gets tested. `@outreach/social/live-hooks/v1` keeps them
 apart: the visual is a file, the hooks are strings, and each hook is one
-more render with the same visual, the same type and the same position.
+more render with the same visual, the same type, the same position and the
+same timing.
 
-- **One hook** renders the post itself at 1080x1920. A still visual gives a
-  PNG (a slideshow slide), a video visual gives an MP4.
-- **Two to four hooks** render the same post side by side under a title, so
-  the variants can be compared in one frame.
+- **The hook moves.** It lands word by word (`words`), line by line
+  (`lines`) or all at once (`pop`), each piece hopping up into place. Every
+  word is its own rectangle cut from one fitted block, so the animated hook
+  ends on exactly the pixels a static one would have.
+- **One hook** renders the post itself at 1080x1920.
+- **Two to four hooks** render the same post side by side under a title,
+  the tiles starting one after another, so the variants can be compared in
+  one clip.
 - **Two styles**: `outline` (white type, dark edge) and `box` (dark type on
   a white label). Every hook in a render shares one size.
 - **Safe area**: hooks stay clear of the platform's right-hand rail, top bar
   and caption block. A long hook shrinks and wraps; it never runs under the
   interface or off the frame.
+- **Stills too**: `hookMotion: "none"` with a still visual renders a PNG, a
+  slideshow slide.
 
 With no visual it draws a flat stand-in scene, so it renders from a bare
 clone:
 
 ```
-m0saic make @outreach/social/hook-wall/v1 --template-repo . -o wall.png
-m0saic make @outreach/social/hook-wall/v1 --template-repo . --props @examples/hook-wall/props.json -o wall.png
+m0saic make @outreach/social/live-hooks/v1 --template-repo . -o wall.mp4
+m0saic make @outreach/social/live-hooks/v1 --template-repo . --props @examples/live-hooks/props.json -o wall.mp4
 ```
 
 With your own visual and hooks (the path must be absolute):
 
 ```
-m0saic make @outreach/social/hook-wall/v1 --template-repo . -o post.mp4 --props '{"visual":["/abs/path/take.mp4"],"hooks":["POV: you finally stopped doing this by hand"]}'
+m0saic make @outreach/social/live-hooks/v1 --template-repo . -o post.mp4 --props '{"visual":["/abs/path/take.mp4"],"hooks":["POV: you finally stopped doing this by hand"]}'
 ```
 
 | Prop | What it is |
 |---|---|
 | `visual` | Zero or one image or video under the hook. |
 | `hooks` | One to four hooks. |
+| `hookMotion` | `"words"`, `"lines"`, `"pop"` or `"none"`. |
 | `hookStyle` | `"outline"` or `"box"`. |
 | `hookPosition` | `"top"` or `"middle"`. |
 | `title`, `note` | The lines above and below the tiles when comparing. |
 | `accent`, `background`, `ink` | Colours of the comparison frame, `#rrggbb`. |
-| `durationSec` | Clip length, 2 to 60, when the visual is a video. |
+| `durationSec` | Clip length, 2 to 60. |
 
-Hooks are Latin text. Emoji are dropped, not drawn as empty boxes; an emoji
-layer is the obvious next version.
+Two limits to know. Hooks are Latin text: emoji are dropped, not drawn as
+empty boxes, and an emoji layer is the obvious next version. And a render
+carries at most 34 moving pieces: past that the motion steps down by itself
+(words, then lines, then all at once), and the engine's report still notes
+a deep overlay chain for a full word-by-word comparison.
+
+`@outreach/social/hook-wall/v1` is the first, static version of this
+template. It is kept because a shipped template is never edited, and it is
+marked as superseded by this one.
 
 ## In Mosaic Desktop
 
@@ -224,7 +239,7 @@ edit it in place, drop a picture or a clip on its slot.
 
 ## About the examples
 
-No real company is named anywhere in this repo. `examples/hook-wall` uses
+No real company is named anywhere in this repo. `examples/live-hooks` uses
 the built-in stand-in visual. `examples/northwind-to-qsbuilds` is addressed to this repo's author,
 [@qsbuilds](https://x.com/qsbuilds), so the recipient is real and the
 picture is his own. The sender, Northwind, is made up, and so is everything

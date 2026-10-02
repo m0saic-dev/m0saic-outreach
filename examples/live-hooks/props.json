@@ -7,9 +7,11 @@
   ],
   "hookStyle": "outline",
   "hookPosition": "top",
+  "hookMotion": "words",
   "title": "One visual, four hooks",
   "note": "Same take, same type, same place. Only the words change.",
   "accent": "#ff7a45",
   "background": "#0e1116",
-  "ink": "#f3f1ec"
+  "ink": "#f3f1ec",
+  "durationSec": 6
 }
